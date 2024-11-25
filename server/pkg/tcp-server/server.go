@@ -2,7 +2,6 @@ package tcpserver
 
 import (
 	"bufio"
-	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -10,12 +9,7 @@ import (
 	"net"
 	"strings"
 	"sync"
-
-	"github.com/NikitaPanferov/21-and-over/server/pkg/tcp-server/types"
 )
-
-// Handler представляет функцию-обработчик для сообщений.
-type Handler func(ctx *Context) error
 
 // Server представляет TCP-сервер.
 type Server struct {
@@ -77,7 +71,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 
 	for {
-		ctx := NewContext(context.Background(), s)
+		ctx := NewContext(s)
 		ctx.SetSender(conn.RemoteAddr().String())
 		// Читаем длину сообщения.
 		header := make([]byte, 4)
@@ -160,7 +154,7 @@ func (s *Server) getConn(IPAddres string) (net.Conn, error) {
 	}
 
 	if conn == nil {
-		return nil, types.ErrConnectionRefused
+		return nil, ErrConnectionRefused
 	}
 
 	return conn, nil
