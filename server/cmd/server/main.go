@@ -3,25 +3,17 @@ package main
 import (
 	"fmt"
 
+	controllerPkg "github.com/NikitaPanferov/21-and-over/server/internal/controller"
 	tcpserver "github.com/NikitaPanferov/21-and-over/server/pkg/tcp-server"
 )
 
-func echoHandler(ctx *tcpserver.Context) error {
-	fmt.Printf("Echo handler received: %s\n", string(ctx.GetMessage()))
-	return ctx.Write(ctx.GetMessage())
-}
-
-func ackHandler(ctx *tcpserver.Context) error {
-	fmt.Printf("ACK handler received: %s\n", string(ctx.GetMessage()))
-	return ctx.Write([]byte("ACK"))
-}
-
 func main() {
-	server := tcpserver.NewServer("192.168.1.75:9000")
+	server := tcpserver.NewServer("localhost:9000")
 
-	// Регистрируем обработчики.
-	server.RegisterHandler("ECHO", echoHandler)
-	server.RegisterHandler("ACK", ackHandler)
+	gameService := struct{}{}
+	controller := controllerPkg.New(gameService)
+
+	controllerPkg.RegisterHandlers(server, controller)
 
 	// Запускаем сервер.
 	if err := server.Start(); err != nil {

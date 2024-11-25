@@ -1,23 +1,36 @@
 package controller
 
+import (
+	"fmt"
+
+	tcpserver "github.com/NikitaPanferov/21-and-over/server/pkg/tcp-server"
+)
+
 type (
 	GameService interface{}
-	Transport   interface{}
 
 	Controller struct {
 		gameService GameService
-		transport   Transport
 	}
 )
 
-func New(gameService GameService, transport Transport) *Controller {
+func New(gameService GameService) *Controller {
 	return &Controller{
 		gameService: gameService,
-		transport:   transport,
 	}
 }
 
+func RegisterHandlers(server *tcpserver.Server, controller *Controller) {
+	server.RegisterHandler("ECHO", controller.echoHandler)
+	server.RegisterHandler("ACK", controller.ackHandler)
+}
 
-func (c *Controller) RegisterHandlers() {
-	// TODO
+func (c *Controller) echoHandler(ctx *tcpserver.Context) error {
+	fmt.Printf("Echo handler received: %s\n", string(ctx.GetMessage()))
+	return ctx.Write(ctx.GetMessage())
+}
+
+func (c *Controller) ackHandler(ctx *tcpserver.Context) error {
+	fmt.Printf("ACK handler received: %s\n", string(ctx.GetMessage()))
+	return ctx.Write([]byte("ACK"))
 }
