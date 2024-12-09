@@ -2,6 +2,8 @@ package tcpserver
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -40,10 +42,13 @@ func (c *Context) GetSender() string {
 }
 
 // Write отправляет ответ клиенту.
-func (c *Context) Write(data []byte) error {
-	// TODO: обработка ошибок
-	// TODO: мб принимать не байты
-	return c.server.SendToIP(c.sender, data)
+func (c *Context) Write(data any) error {
+	dataToSend, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("json.Marshal: %w", err)
+	}
+
+	return c.SendToIP(c.sender, dataToSend)
 }
 
 // Value возвращает значение из контекста, реализуя интерфейс context.Context.
@@ -62,4 +67,21 @@ func (c *Context) Done() <-chan struct{} {
 
 func (c *Context) Err() error {
 	return c.ctx.Err()
+}
+
+func (c *Context) SendToIP(ip string, data []byte) error {
+	client, err := c.server.getClient(ip)
+	if err != nil {
+		return fmt.Errorf("c.server.getClient: %w", err)
+	}
+
+	client.IncomingChan <- data
+
+	return nil
+}
+
+func (c *Context) SendToAll(data []byte) error {
+	c.server.broadcastCh <- data
+
+	return nil
 }

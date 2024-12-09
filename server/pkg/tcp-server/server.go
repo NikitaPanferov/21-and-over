@@ -13,19 +13,21 @@ import (
 
 // Server представляет TCP-сервер.
 type Server struct {
-	address    string
-	handlers   map[string]Handler
-	conns      map[string]net.Conn
-	handlersMu sync.RWMutex
-	connsMu    sync.RWMutex
+	address     string
+	handlers    map[string]Handler
+	clients     map[string]*Client
+	broadcastCh chan []byte
+	handlersMu  sync.RWMutex
+	clientsMu   sync.RWMutex
 }
 
 // NewServer создает новый сервер.
 func NewServer(address string) *Server {
 	return &Server{
-		address:  address,
-		handlers: make(map[string]Handler),
-		conns:    make(map[string]net.Conn),
+		address:     address,
+		handlers:    make(map[string]Handler),
+		clients:     make(map[string]*Client),
+		broadcastCh: make(chan []byte, 100),
 	}
 }
 
@@ -45,7 +47,12 @@ func (s *Server) Start() error {
 	defer listener.Close()
 
 	fmt.Printf("Server listening on %s\n", s.address)
+
+	go s.handleBroadcastChannel()
+	defer close(s.broadcastCh)
+
 	s.acceptConnections(listener)
+
 	return nil
 }
 
@@ -57,11 +64,14 @@ func (s *Server) acceptConnections(listener net.Listener) {
 			continue
 		}
 
-		s.connsMu.Lock()
-		s.conns[conn.RemoteAddr().String()] = conn
-		s.connsMu.Unlock()
+		client := NewClient(conn)
+
+		s.clientsMu.Lock()
+		s.clients[conn.RemoteAddr().String()] = client
+		s.clientsMu.Unlock()
 
 		go s.handleConnection(conn)
+		go s.handleIncomingChannel(client)
 	}
 }
 
@@ -69,58 +79,75 @@ func (s *Server) acceptConnections(listener net.Listener) {
 func (s *Server) handleConnection(conn net.Conn) {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
+	ctx := NewContext(s)
+
+	defer func() {
+		s.clientsMu.Lock()
+		if client, exists := s.clients[conn.RemoteAddr().String()]; exists {
+			close(client.IncomingChan)
+		}
+		delete(s.clients, conn.RemoteAddr().String())
+		s.clientsMu.Unlock()
+		fmt.Printf("Client %s disconnected.\n", conn.RemoteAddr().String())
+	}()
 
 	for {
-		ctx := NewContext(s)
 		ctx.SetSender(conn.RemoteAddr().String())
-		// Читаем длину сообщения.
+
+		// Чтение сообщения
 		header := make([]byte, 4)
 		_, err := io.ReadFull(reader, header)
 		if err != nil {
-			if err.Error() == "EOF" {
-				fmt.Println("Client disconnected")
-				s.connsMu.Lock()
-				s.conns[conn.RemoteAddr().String()] = nil
-				s.connsMu.Unlock()
+			if err == io.EOF {
+				fmt.Printf("Client %s disconnected.\n", conn.RemoteAddr().String())
 			} else {
-				fmt.Printf("Error reading header: %v\n", err)
+				fmt.Printf("Error reading from %s: %v\n", conn.RemoteAddr().String(), err)
 			}
 			return
 		}
 
 		messageLen := binary.BigEndian.Uint32(header)
 		if messageLen == 0 {
-			fmt.Println("Error: invalid message length")
+			fmt.Printf("Invalid message length from %s.\n", conn.RemoteAddr().String())
 			return
 		}
 
-		// Читаем само сообщение.
 		message := make([]byte, messageLen)
 		_, err = io.ReadFull(reader, message)
 		if err != nil {
-			fmt.Printf("Error reading message: %v\n", err)
+			fmt.Printf("Error reading message from %s: %v\n", conn.RemoteAddr().String(), err)
 			return
 		}
 
-		// Обрабатываем сообщение.
+		// Обработка сообщения
 		messageType, payload, err := parseMessage(message)
 		if err != nil {
-			fmt.Printf("Error parsing message: %v\n", err)
+			fmt.Printf("Error parsing message from %s: %v\n", conn.RemoteAddr().String(), err)
 			return
 		}
 
-		// Вызываем соответствующий хендлер.
 		handler, err := s.getHandler(messageType)
 		if err != nil {
-			fmt.Printf("Error getting handler: %v\n", err)
+			fmt.Printf("Handler error for %s: %v\n", conn.RemoteAddr().String(), err)
+			ctx.Write(Response{
+				Code: ResponseCodeNotFound,
+				Data: map[string]string{
+					"error": err.Error(),
+				},
+			})
 			return
 		}
 
 		ctx.SetMessage(payload)
-
 		err = handler(ctx)
 		if err != nil {
-			fmt.Printf("Error handling message: %v\n", err)
+			fmt.Printf("Error handling message from %s: %v\n", conn.RemoteAddr().String(), err)
+			ctx.Write(Response{
+				Code: ResponseCodeServerError,
+				Data: map[string]string{
+					"error": err.Error(),
+				},
+			})
 		}
 	}
 }
@@ -145,31 +172,51 @@ func (s *Server) getHandler(messageType string) (Handler, error) {
 	return handler, nil
 }
 
-func (s *Server) getConn(IPAddres string) (net.Conn, error) {
-	s.connsMu.RLock()
-	defer s.connsMu.RUnlock()
-	conn, exists := s.conns[IPAddres]
+func (s *Server) getClient(ip string) (*Client, error) {
+	s.clientsMu.RLock()
+	defer s.clientsMu.RUnlock()
+	client, exists := s.clients[ip]
 	if !exists {
-		return nil, fmt.Errorf("no connection found for IP address: %s", IPAddres)
+		return nil, ErrClientNotFound
 	}
 
-	if conn == nil {
-		return nil, ErrConnectionRefused
-	}
-
-	return conn, nil
+	return client, nil
 }
 
-func (s *Server) SendToIP(IPAddress string, message []byte) error {
-	conn, err := s.getConn(IPAddress)
-	if err != nil {
-		return fmt.Errorf("s.getConn: %w", err)
+func (s *Server) handleIncomingChannel(client *Client) {
+	for {
+		select {
+		case data, ok := <-client.IncomingChan:
+			if !ok {
+				return
+			}
+
+			responseLen := make([]byte, 4)
+			binary.BigEndian.PutUint32(responseLen, uint32(len(data)))
+			_, err := client.Conn.Write(append(responseLen, data...))
+			if err != nil {
+				fmt.Printf("ERROR: client.Conn.Write: %v\n", err)
+			}
+		}
+
 	}
-	responseLen := make([]byte, 4)
-	binary.BigEndian.PutUint32(responseLen, uint32(len(message)))
-	_, err = conn.Write(append(responseLen, message...))
-	if err != nil {
-		return fmt.Errorf("conn.Write: %w", err)
+}
+
+func (s *Server) handleBroadcastChannel() {
+	for {
+		select {
+		case data, ok := <-s.broadcastCh:
+			if !ok {
+				for _, client := range s.clients {
+					close(client.IncomingChan)
+				}
+
+				return
+			}
+
+			for _, client := range s.clients {
+				client.IncomingChan <- data
+			}
+		}
 	}
-	return nil
 }

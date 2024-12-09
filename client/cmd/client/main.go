@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -14,22 +15,28 @@ func main() {
 	}
 	defer client.Close()
 
-	for {
+	for i := 1; i < 10; i++ {
 		// Отправляем сообщение типа ECHO.
-		response, err := client.SendMessage("ECHO", []byte("Hello, server!"))
+		dataToSend, err := json.Marshal(map[string]string{
+			"name": fmt.Sprintf("Player %d", i),
+		})
+		response, err := client.SendMessage("JOIN", dataToSend)
 		if err != nil {
-			log.Fatalf("Error sending ECHO message: %v", err)
+			log.Fatalf("Error sending JOIN message: %v", err)
 		}
-		fmt.Printf("ECHO response: %s\n", string(response))
-	
-		// Отправляем сообщение типа ACK.
-		response, err = client.SendMessage("ACK", []byte("Testing ACK handler"))
+		fmt.Printf("JOIN response: %s\n", response)
+
+		dataFromServer := struct {
+			Code uint16 `json:"code"`
+			Data any    `json:"data"`
+		}{}
+		err = json.Unmarshal(response, &dataFromServer)
 		if err != nil {
-			log.Fatalf("Error sending ACK message: %v", err)
+			log.Fatalf("Error unmarshalling JOIN response: %v", err)
 		}
-		fmt.Printf("ACK response: %s\n", string(response))
-		
+
+		fmt.Printf("JOIN response: %v\n", dataFromServer)
+
 		fmt.Scanf("\n")
 	}
-
 }
