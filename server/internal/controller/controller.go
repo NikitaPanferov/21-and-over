@@ -22,18 +22,14 @@ func New(gameService GameService) *Controller {
 
 func RegisterHandlers(server *tcpserver.Server, controller *Controller) {
 	server.RegisterHandler("ECHO", controller.echoHandler)
-	server.RegisterHandler("ACK", controller.ackHandler)
 	server.RegisterHandler("JOIN", controller.joinHandler)
 }
 
 func (c *Controller) echoHandler(ctx *tcpserver.Context) error {
-	fmt.Printf("Echo handler received: %s\n", string(ctx.GetMessage()))
-	_ = ctx.SendToAll(ctx.GetMessage())
-	fmt.Printf("Echo handler sent: %s\n", string(ctx.GetMessage()))
-	return nil
-}
+	err := ctx.SendToAll(tcpserver.CodeSuccess, ctx.GetMessage().Data.(string))
+	if err != nil {
+		return fmt.Errorf("ctx.SendToAll: %w", err)
+	}
 
-func (c *Controller) ackHandler(ctx *tcpserver.Context) error {
-	fmt.Printf("ACK handler received: %s\n", string(ctx.GetMessage()))
-	return ctx.Write([]byte("ACK"))
+	return nil
 }
