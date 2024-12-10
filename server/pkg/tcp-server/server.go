@@ -3,11 +3,10 @@ package tcpserver
 import (
 	"bufio"
 	"encoding/binary"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
-	"strings"
 	"sync"
 )
 
@@ -112,53 +111,53 @@ func (s *Server) handleConnection(conn net.Conn) {
 			return
 		}
 
-		message := make([]byte, messageLen)
-		_, err = io.ReadFull(reader, message)
+		rawMessage := make([]byte, messageLen)
+		_, err = io.ReadFull(reader, rawMessage)
 		if err != nil {
 			fmt.Printf("Error reading message from %s: %v\n", conn.RemoteAddr().String(), err)
 			return
 		}
 
 		// Обработка сообщения
-		messageType, payload, err := parseMessage(message)
+		message, err := parseMessage(rawMessage)
 		if err != nil {
 			fmt.Printf("Error parsing message from %s: %v\n", conn.RemoteAddr().String(), err)
 			return
 		}
 
-		handler, err := s.getHandler(messageType)
+		handler, err := s.getHandler(message.Action)
 		if err != nil {
 			fmt.Printf("Handler error for %s: %v\n", conn.RemoteAddr().String(), err)
-			ctx.Write(Response{
-				Code: ResponseCodeNotFound,
-				Data: map[string]string{
-					"error": err.Error(),
-				},
-			})
-			return
+			ctx.ReplyWithError(CodeNotFound, fmt.Errorf("s.getHandler: %w", err))
+			continue
 		}
 
-		ctx.SetMessage(payload)
+		ctx.SetMessage(message)
+		err = ctx.SetRawData(message.Data)
+		if err != nil {
+			fmt.Printf("Error setting raw data for %s: %v\n", conn.RemoteAddr().String(), err)
+			ctx.ReplyWithError(CodeClientError, fmt.Errorf("ctx.SetRawData: %w", err))
+			continue
+		}
+
 		err = handler(ctx)
 		if err != nil {
 			fmt.Printf("Error handling message from %s: %v\n", conn.RemoteAddr().String(), err)
-			ctx.Write(Response{
-				Code: ResponseCodeServerError,
-				Data: map[string]string{
-					"error": err.Error(),
-				},
-			})
+			ctx.ReplyWithError(CodeServerError, fmt.Errorf("handler: %w", err))
+			continue
 		}
 	}
 }
 
 // parseMessage парсит сообщение и возвращает тип сообщения и полезные данные.
-func parseMessage(message []byte) (string, []byte, error) {
-	parts := strings.SplitN(string(message), ":", 2)
-	if len(parts) < 2 {
-		return "", nil, errors.New("invalid message format")
+func parseMessage(rawMessage []byte) (*Message, error) {
+	var message Message
+	err := json.Unmarshal(rawMessage, &message)
+	if err != nil {
+		return nil, fmt.Errorf("json.Unmarshal: %w", err)
 	}
-	return parts[0], []byte(parts[1]), nil
+
+	return &message, nil
 }
 
 // getHandler возвращает хендлер для указанного типа сообщения.

@@ -9,10 +9,12 @@ import (
 
 // Context представляет пользовательский контекст, совместимый с context.Context.
 type Context struct {
-	ctx     context.Context
-	server  *Server
-	message []byte
-	sender  string
+	ctx      context.Context
+	server   *Server
+	message  *Message
+	sender   string
+	response *Message
+	data     []byte
 }
 
 // NewContext создает новый пользовательский контекст.
@@ -24,12 +26,12 @@ func NewContext(server *Server) *Context {
 }
 
 // SetMessage устанавливает сообщение в контекст.
-func (c *Context) SetMessage(message []byte) {
+func (c *Context) SetMessage(message *Message) {
 	c.message = message
 }
 
 // GetMessage возвращает сообщение из контекста.
-func (c *Context) GetMessage() []byte {
+func (c *Context) GetMessage() *Message {
 	return c.message
 }
 
@@ -42,8 +44,29 @@ func (c *Context) GetSender() string {
 }
 
 // Write отправляет ответ клиенту.
-func (c *Context) Write(data any) error {
-	dataToSend, err := json.Marshal(data)
+func (c *Context) Reply(code Code, data any) error {
+	dataToSend, err := json.Marshal(Message{
+		ID:     c.message.ID,
+		Action: c.message.Action,
+		Code:   code,
+		Data:   data,
+	})
+	if err != nil {
+		return fmt.Errorf("json.Marshal: %w", err)
+	}
+
+	return c.SendToIP(c.sender, dataToSend)
+}
+
+func (c *Context) ReplyWithError(code Code, err error) error {
+	dataToSend, err := json.Marshal(Message{
+		ID:     c.message.ID,
+		Action: c.message.Action,
+		Code:   code,
+		Data: map[string]string{
+			"error": err.Error(),
+		},
+	})
 	if err != nil {
 		return fmt.Errorf("json.Marshal: %w", err)
 	}
@@ -80,8 +103,33 @@ func (c *Context) SendToIP(ip string, data []byte) error {
 	return nil
 }
 
-func (c *Context) SendToAll(data []byte) error {
-	c.server.broadcastCh <- data
+func (c *Context) SendToAll(code Code, data any) error {
+	dataToSend, err := json.Marshal(Message{
+		ID:     c.message.ID,
+		Action: c.message.Action,
+		Code:   code,
+		Data:   data,
+	})
+	if err != nil {
+		return fmt.Errorf("json.Marshal: %w", err)
+	}
+
+	c.server.broadcastCh <- dataToSend
+
+	return nil
+}
+
+func (c *Context) GetRawData() []byte {
+	return c.data
+}
+
+func (c *Context) SetRawData(data any) error {
+	rawData, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("json.Marshal: %w", err)
+	}
+
+	c.data = rawData
 
 	return nil
 }

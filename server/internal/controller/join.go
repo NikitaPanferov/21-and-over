@@ -10,19 +10,14 @@ import (
 )
 
 func (c *Controller) joinHandler(ctx *tcpserver.Context) error {
-	fmt.Printf("Join handler received: %s\n", string(ctx.GetMessage()))
+	fmt.Printf("Join handler received: %s\n", ctx.GetMessage().Data.(map[string]interface{}))
 
 	var request types.JoinRequest
-	err := json.Unmarshal(ctx.GetMessage(), &request)
+	err := json.Unmarshal(ctx.GetRawData(), &request)
 	if err != nil {
-		writeErr := ctx.Write(tcpserver.Response{
-			Code: tcpserver.ResponseCodeClientError,
-			Data: map[string]string{
-				"error": err.Error(),
-			},
-		})
+		writeErr := ctx.ReplyWithError(tcpserver.CodeClientError, err)
 		if writeErr != nil {
-			return fmt.Errorf("ctx.Write: %w", err)
+			return fmt.Errorf("ctx.ReplyWithError: %w", err)
 		}
 
 		//TODO: сделать норм логгер
@@ -33,32 +28,13 @@ func (c *Controller) joinHandler(ctx *tcpserver.Context) error {
 
 	_ = entities.NewPlayer(request.Name)
 
+	err = ctx.Reply(tcpserver.CodeSuccess, nil)
 	if err != nil {
-		writeErr := ctx.Write(tcpserver.Response{
-			Code: tcpserver.ResponseCodeClientError,
-			Data: map[string]string{
-				"error": err.Error(),
-			},
-		})
-		if writeErr != nil {
-			return fmt.Errorf("ctx.Write: %w", err)
-		}
-
-		//TODO: сделать норм логгер
-		fmt.Printf("INFO: handled error: %v\n", err)
-
-		return nil
-	}
-
-	writeErr := ctx.Write(tcpserver.Response{
-		Code: tcpserver.ResponseCodeSuccess,
-	})
-	if writeErr != nil {
-		return fmt.Errorf("ctx.Write: %w", err)
+		return fmt.Errorf("ctx.Reply: %w", err)
 	}
 
 	//TODO: сделать норм логгер
-	fmt.Printf("INFO: handled join request for: %s\n", ctx.GetSender())
+	fmt.Printf("INFO: handled join request for: %s (%s)\n", request.Name, ctx.GetSender())
 
 	return nil
 }
