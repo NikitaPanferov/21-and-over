@@ -51,6 +51,15 @@ func (c *Context) Write(data any) error {
 	return c.SendToIP(c.sender, dataToSend)
 }
 
+func (c *Context) WriteAll(data any) error {
+	dataToSend, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("json.Marshal: %w", err)
+	}
+
+	return c.SendToAll(dataToSend)
+}
+
 // Value возвращает значение из контекста, реализуя интерфейс context.Context.
 func (c *Context) Value(key interface{}) interface{} {
 	return c.ctx.Value(key)

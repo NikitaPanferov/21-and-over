@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/NikitaPanferov/21-and-over/server/internal/controller/types"
@@ -31,31 +32,37 @@ func (c *Controller) joinHandler(ctx *tcpserver.Context) error {
 		return nil
 	}
 
-	_ = entities.NewPlayer(request.Name)
+	player := entities.NewPlayer(request.Name)
 
+	err = c.gameService.Join(ctx, *player)
 	if err != nil {
-		writeErr := ctx.Write(tcpserver.Response{
-			Code: tcpserver.ResponseCodeClientError,
-			Data: map[string]string{
-				"error": err.Error(),
-			},
-		})
-		if writeErr != nil {
-			return fmt.Errorf("ctx.Write: %w", err)
+		switch {
+		case errors.Is(err, entities.ErrJoinGameIsFull):
+		case errors.Is(err, entities.ErrJoinGameIsOn):
+		case errors.Is(err, entities.ErrJoinPlayerAlreadyInGame):
+			writeErr := ctx.Write(tcpserver.Response{
+				Code: tcpserver.ResponseCodeClientError,
+				Data: map[string]string{
+					"error": err.Error(),
+				},
+			})
+			if writeErr != nil {
+				return fmt.Errorf("ctx.Write: %w", err)
+			}
+			return nil
+		default:
+			return fmt.Errorf("c.gameService.Join: %w", err)
 		}
-
-		//TODO: сделать норм логгер
-		fmt.Printf("INFO: handled error: %v\n", err)
-
-		return nil
 	}
 
-	writeErr := ctx.Write(tcpserver.Response{
+	err = ctx.Write(tcpserver.Response{
 		Code: tcpserver.ResponseCodeSuccess,
 	})
-	if writeErr != nil {
+	if err != nil {
 		return fmt.Errorf("ctx.Write: %w", err)
 	}
+
+	ctx.WriteAll(c.gameService.)
 
 	//TODO: сделать норм логгер
 	fmt.Printf("INFO: handled join request for: %s\n", ctx.GetSender())

@@ -3,11 +3,14 @@ package controller
 import (
 	"fmt"
 
+	"github.com/NikitaPanferov/21-and-over/server/internal/domain/entities"
 	tcpserver "github.com/NikitaPanferov/21-and-over/server/pkg/tcp-server"
 )
 
 type (
-	GameService interface{}
+	GameService interface{
+		Join(ctx *tcpserver.Context, player entities.Player) error
+	}
 
 	Controller struct {
 		gameService GameService
