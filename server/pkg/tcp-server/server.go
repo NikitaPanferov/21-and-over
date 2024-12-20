@@ -13,7 +13,7 @@ import (
 // Server представляет TCP-сервер.
 type Server struct {
 	address     string
-	handlers    map[string]Handler
+	handlers    map[Action]Handler
 	clients     map[string]*Client
 	broadcastCh chan []byte
 	handlersMu  sync.RWMutex
@@ -24,17 +24,17 @@ type Server struct {
 func NewServer(address string) *Server {
 	return &Server{
 		address:     address,
-		handlers:    make(map[string]Handler),
+		handlers:    make(map[Action]Handler),
 		clients:     make(map[string]*Client),
 		broadcastCh: make(chan []byte, 100),
 	}
 }
 
 // RegisterHandler регистрирует хендлер для определенного типа сообщений.
-func (s *Server) RegisterHandler(messageType string, handler Handler) {
+func (s *Server) RegisterHandler(action Action, handler Handler) {
 	s.handlersMu.Lock()
 	defer s.handlersMu.Unlock()
-	s.handlers[messageType] = handler
+	s.handlers[action] = handler
 }
 
 // Start запускает сервер.
@@ -161,12 +161,12 @@ func parseMessage(rawMessage []byte) (*Message, error) {
 }
 
 // getHandler возвращает хендлер для указанного типа сообщения.
-func (s *Server) getHandler(messageType string) (Handler, error) {
+func (s *Server) getHandler(action Action) (Handler, error) {
 	s.handlersMu.RLock()
 	defer s.handlersMu.RUnlock()
-	handler, exists := s.handlers[messageType]
+	handler, exists := s.handlers[action]
 	if !exists {
-		return nil, fmt.Errorf("no handler registered for message type: %s", messageType)
+		return nil, fmt.Errorf("no handler registered for action: %s", action)
 	}
 	return handler, nil
 }

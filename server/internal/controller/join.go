@@ -2,39 +2,59 @@ package controller
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/NikitaPanferov/21-and-over/server/internal/controller/types"
 	"github.com/NikitaPanferov/21-and-over/server/internal/domain/entities"
+	"github.com/NikitaPanferov/21-and-over/server/pkg/logger"
 	tcpserver "github.com/NikitaPanferov/21-and-over/server/pkg/tcp-server"
 )
 
 func (c *Controller) joinHandler(ctx *tcpserver.Context) error {
-	fmt.Printf("Join handler received: %s\n", ctx.GetMessage().Data.(map[string]interface{}))
+	allowed := c.ValidateState(ctx)
+	if !allowed {
+		return ctx.ReplyWithError(
+			tcpserver.CodeClientError,
+			errors.New("invalid state"),
+		)
+	}
 
 	var request types.JoinRequest
 	err := json.Unmarshal(ctx.GetRawData(), &request)
 	if err != nil {
-		writeErr := ctx.ReplyWithError(tcpserver.CodeClientError, err)
-		if writeErr != nil {
-			return fmt.Errorf("ctx.ReplyWithError: %w", err)
-		}
-
-		//TODO: сделать норм логгер
-		fmt.Printf("INFO: handled error: %v\n", err)
-
-		return nil
+		return ctx.ReplyWithError(
+			tcpserver.CodeClientError,
+			fmt.Errorf("json.Unmarshal: %w", err),
+		)
 	}
 
-	_ = entities.NewPlayer(request.Name)
+	player := c.gameService.GetPlayer(request.Name, ctx.GetSender())
+
+	gameState, err := c.gameService.Join(ctx.GetContext(), player)
+	if err != nil {
+		return ctx.ReplyWithError(
+			tcpserver.CodeClientError,
+			fmt.Errorf("c.gameService.Join: %w", err),
+		)
+	}
 
 	err = ctx.Reply(tcpserver.CodeSuccess, nil)
 	if err != nil {
-		return fmt.Errorf("ctx.Reply: %w", err)
+		logger.ErrorContext(ctx.GetContext(), "ctx.Reply: %v", err)
 	}
 
-	//TODO: сделать норм логгер
-	fmt.Printf("INFO: handled join request for: %s (%s)\n", request.Name, ctx.GetSender())
+	ctx.SendToAll(tcpserver.CodeSuccess, &tcpserver.Message{
+		EventType: tcpserver.EventTypePlayerJoined,
+		Data:      gameState,
+	})
+
+	if c.gameService.GetState() == entities.WaitBetState {
+		ctx.SendToAll(tcpserver.CodeSuccess, &tcpserver.Message{
+			EventType: tcpserver.EventTypeWaitingBet,
+			Data:      gameState,
+		})
+	}
 
 	return nil
 }

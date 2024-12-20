@@ -6,7 +6,7 @@ import (
 )
 
 type Deck struct {
-	Cards []*Card
+	Cards []*Card `json:"cards"`
 }
 
 func NewDeck() *Deck {

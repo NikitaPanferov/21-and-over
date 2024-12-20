@@ -4,18 +4,24 @@ import (
 	"fmt"
 
 	controllerPkg "github.com/NikitaPanferov/21-and-over/server/internal/controller"
+	"github.com/NikitaPanferov/21-and-over/server/internal/domain/services/game"
+	"github.com/NikitaPanferov/21-and-over/server/internal/repository/sqlite"
 	tcpserver "github.com/NikitaPanferov/21-and-over/server/pkg/tcp-server"
 )
 
 func main() {
 	server := tcpserver.NewServer("localhost:9000")
 
-	gameService := struct{}{}
+	//TODO: вынести в конфиг
+	playerRepo := sqlite.New(1000)
+
+	//TODO: вынести в конфиг
+	gameService := game.New(2, playerRepo)
+
 	controller := controllerPkg.New(gameService)
 
 	controllerPkg.RegisterHandlers(server, controller)
 
-	// Запускаем сервер.
 	if err := server.Start(); err != nil {
 		fmt.Printf("Server error: %v\n", err)
 	}

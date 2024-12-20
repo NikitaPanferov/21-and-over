@@ -1,13 +1,20 @@
 package controller
 
 import (
-	"fmt"
+	"context"
 
+	"github.com/NikitaPanferov/21-and-over/server/internal/domain/entities"
 	tcpserver "github.com/NikitaPanferov/21-and-over/server/pkg/tcp-server"
 )
 
 type (
-	GameService interface{}
+	GameService interface {
+		Join(ctx context.Context, player *entities.Player) (*entities.GameState, error)
+		GetState() entities.State
+		GetPlayer(
+			name, ip string,
+		) *entities.Player
+	}
 
 	Controller struct {
 		gameService GameService
@@ -26,10 +33,12 @@ func RegisterHandlers(server *tcpserver.Server, controller *Controller) {
 }
 
 func (c *Controller) echoHandler(ctx *tcpserver.Context) error {
-	err := ctx.SendToAll(tcpserver.CodeSuccess, ctx.GetMessage().Data.(string))
-	if err != nil {
-		return fmt.Errorf("ctx.SendToAll: %w", err)
-	}
+	ctx.SendToAll(tcpserver.CodeSuccess, &tcpserver.Message{
+		ID:     ctx.GetMessage().ID,
+		Action: ctx.GetMessage().Action,
+		Data:   ctx.GetMessage().Data,
+		Code:   tcpserver.CodeSuccess,
+	})
 
 	return nil
 }
