@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	server := tcpserver.NewServer("localhost:9000")
+	server := tcpserver.NewServer("0.0.0.0:9000")
 
 	gameService := struct{}{}
 	controller := controllerPkg.New(gameService)
