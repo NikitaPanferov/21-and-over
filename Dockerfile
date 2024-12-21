@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY server /app
 
-RUN go mod tidy && go build -o app ./cmd/server/main.go
+RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -o app ./cmd/server/main.go
 
 FROM alpine:3.18
 
