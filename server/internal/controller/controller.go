@@ -1,13 +1,23 @@
 package controller
 
 import (
-	"fmt"
+	"context"
 
+	"github.com/NikitaPanferov/21-and-over/server/internal/domain/entities"
 	tcpserver "github.com/NikitaPanferov/21-and-over/server/pkg/tcp-server"
 )
 
 type (
-	GameService interface{}
+	GameService interface {
+		Join(ctx context.Context, player *entities.Player) (*entities.GameState, error)
+		GetState(ctx context.Context) entities.State
+		GetPlayer(ctx context.Context, name, ip string) *entities.Player
+		GetActivePlayerIP(ctx context.Context) string
+		Bet(ctx context.Context, playerIP string, bet int) (*entities.GameState, error)
+		Hit(ctx context.Context, playerIP string) (*entities.GameState, error)
+		Stand(ctx context.Context, playerIP string) (*entities.GameState, error)
+		Reset(ctx context.Context)
+	}
 
 	Controller struct {
 		gameService GameService
@@ -23,13 +33,18 @@ func New(gameService GameService) *Controller {
 func RegisterHandlers(server *tcpserver.Server, controller *Controller) {
 	server.RegisterHandler("ECHO", controller.echoHandler)
 	server.RegisterHandler("JOIN", controller.joinHandler)
+	server.RegisterHandler("BET", controller.betHandler)
+	server.RegisterHandler("HIT", controller.hitHandler)
+	server.RegisterHandler("STAND", controller.standHandler)
 }
 
 func (c *Controller) echoHandler(ctx *tcpserver.Context) error {
-	err := ctx.SendToAll(tcpserver.CodeSuccess, ctx.GetMessage().Data.(string))
-	if err != nil {
-		return fmt.Errorf("ctx.SendToAll: %w", err)
-	}
+	ctx.SendToAll(tcpserver.CodeSuccess, &tcpserver.Message{
+		ID:     ctx.GetMessage().ID,
+		Action: ctx.GetMessage().Action,
+		Data:   ctx.GetMessage().Data,
+		Code:   tcpserver.CodeSuccess,
+	})
 
 	return nil
 }

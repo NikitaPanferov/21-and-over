@@ -11,7 +11,7 @@ import (
 	tcpserver "github.com/NikitaPanferov/21-and-over/server/pkg/tcp-server"
 )
 
-func (c *Controller) joinHandler(ctx *tcpserver.Context) error {
+func (c *Controller) betHandler(ctx *tcpserver.Context) error {
 	allowed := c.ValidateState(ctx)
 	if !allowed {
 		return ctx.ReplyWithError(
@@ -20,7 +20,7 @@ func (c *Controller) joinHandler(ctx *tcpserver.Context) error {
 		)
 	}
 
-	var request types.JoinRequest
+	var request types.BetRequest
 	err := json.Unmarshal(ctx.GetRawData(), &request)
 	if err != nil {
 		return ctx.ReplyWithError(
@@ -29,13 +29,11 @@ func (c *Controller) joinHandler(ctx *tcpserver.Context) error {
 		)
 	}
 
-	player := c.gameService.GetPlayer(ctx.GetContext(), request.Name, ctx.GetSender())
-
-	gameState, err := c.gameService.Join(ctx.GetContext(), player)
+	gameState, err := c.gameService.Bet(ctx.GetContext(), ctx.GetSender(), request.Bet)
 	if err != nil {
 		return ctx.ReplyWithError(
 			tcpserver.CodeClientError,
-			fmt.Errorf("c.gameService.Join: %w", err),
+			fmt.Errorf("c.gameService.Bet: %w", err),
 		)
 	}
 
@@ -45,13 +43,13 @@ func (c *Controller) joinHandler(ctx *tcpserver.Context) error {
 	}
 
 	ctx.SendToAll(tcpserver.CodeSuccess, &tcpserver.Message{
-		EventType: tcpserver.EventTypePlayerJoined,
+		EventType: tcpserver.EventTypePlayerDidBet,
 		Data:      gameState,
 	})
 
-	if c.gameService.GetState(ctx.GetContext()) == entities.WaitBetState {
+	if c.gameService.GetState(ctx.GetContext()) == entities.PlayState {
 		ctx.SendToAll(tcpserver.CodeSuccess, &tcpserver.Message{
-			EventType: tcpserver.EventTypeWaitingBet,
+			EventType: tcpserver.EventTypeGameStarted,
 			Data:      gameState,
 		})
 	}

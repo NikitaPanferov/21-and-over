@@ -28,7 +28,7 @@ const (
 )
 
 type Card struct {
-	Suit     Suit
-	Rank     Rank
-	IsHidden bool
+	Suit     Suit `json:"suit"`
+	Rank     Rank `json:"rank"`
+	IsHidden bool `json:"isHidden"`
 }

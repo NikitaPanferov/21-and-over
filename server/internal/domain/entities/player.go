@@ -1,13 +1,17 @@
 package entities
 
 type Player struct {
-	Hands []*Hand
-	Name  string
+	Hand  *Hand  `json:"hand"`
+	Name  string `json:"name"`
+	IP    string `json:"ip"`
+	Chips int    `json:"chips"`
+	Bet   int    `json:"bet"`
 }
 
-func NewPlayer(name string) *Player {
+func NewPlayer(name string, ip string) *Player {
 	return &Player{
-		Hands: make([]*Hand, 0),
-		Name:  name,
+		Hand: &Hand{},
+		Name: name,
+		IP:   ip,
 	}
 }
