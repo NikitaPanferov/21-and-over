@@ -137,3 +137,7 @@ func (c *Context) SetRawData(data any) error {
 func (c *Context) GetContext() context.Context {
 	return c.ctx
 }
+
+func (c *Context) ClearConnections() {
+	c.server.ClearConnections()
+}

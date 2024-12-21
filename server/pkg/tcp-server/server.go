@@ -219,3 +219,10 @@ func (s *Server) handleBroadcastChannel() {
 		}
 	}
 }
+
+func (s *Server) ClearConnections() {
+	for clientIP, client := range s.clients {
+		close(client.IncomingChan)
+		delete(s.clients, clientIP)
+	}
+}

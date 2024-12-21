@@ -42,6 +42,9 @@ func (c *Controller) hitHandler(ctx *tcpserver.Context) error {
 			EventType: tcpserver.EventTypeGameEnded,
 			Data:      gameState,
 		})
+
+		c.gameService.Reset(ctx.GetContext())
+		ctx.ClearConnections()
 	}
 
 	return nil

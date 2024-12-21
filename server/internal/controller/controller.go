@@ -16,6 +16,7 @@ type (
 		Bet(ctx context.Context, playerIP string, bet int) (*entities.GameState, error)
 		Hit(ctx context.Context, playerIP string) (*entities.GameState, error)
 		Stand(ctx context.Context, playerIP string) (*entities.GameState, error)
+		Reset(ctx context.Context)
 	}
 
 	Controller struct {

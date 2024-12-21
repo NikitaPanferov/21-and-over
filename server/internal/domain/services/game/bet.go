@@ -10,7 +10,7 @@ func (s *Service) Bet(ctx context.Context, playerIP string, bet int) (*entities.
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	player, ok := s.Players[playerIP]
+	player, ok := s.players[playerIP]
 	if !ok {
 		return s.getGameState(), entities.ErrPlayerNotFound
 	}
@@ -31,8 +31,8 @@ func (s *Service) Bet(ctx context.Context, playerIP string, bet int) (*entities.
 		s.giveInitialCards()
 	}
 
-	for _, player := range s.Players {
-		s.ActivePlayerIP = player.IP
+	for _, player := range s.players {
+		s.activePlayerIP = player.IP
 		break
 	}
 
@@ -40,7 +40,7 @@ func (s *Service) Bet(ctx context.Context, playerIP string, bet int) (*entities.
 }
 
 func (s *Service) checkIfAllBeted() bool {
-	for _, player := range s.Players {
+	for _, player := range s.players {
 		if player.Bet == 0 {
 			return false
 		}
@@ -50,17 +50,17 @@ func (s *Service) checkIfAllBeted() bool {
 }
 
 func (s *Service) giveInitialCards() {
-	for _, player := range s.Players {
-		card := s.Deck.DrawTopCard()
+	for _, player := range s.players {
+		card := s.deck.DrawTopCard()
 		card.IsHidden = false
 		player.Hand.Cards = append(player.Hand.Cards, card)
 
-		card = s.Deck.DrawTopCard()
+		card = s.deck.DrawTopCard()
 		card.IsHidden = false
 		player.Hand.Cards = append(player.Hand.Cards, card)
 	}
 
-	card := s.Deck.DrawTopCard()
+	card := s.deck.DrawTopCard()
 	card.IsHidden = false
-	s.DillerHand.Cards = append(s.DillerHand.Cards, s.Deck.DrawTopCard())
+	s.dealer.Cards = append(s.dealer.Cards, s.deck.DrawTopCard())
 }

@@ -10,17 +10,17 @@ func (s *Service) Join(ctx context.Context, player *entities.Player) (*entities.
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if len(s.Players) >= s.MaxPlayers {
+	if len(s.players) >= s.maxPlayers {
 		return s.getGameState(), entities.ErrGameIsFull
 	}
 
-	if _, ok := s.Players[player.IP]; ok {
+	if _, ok := s.players[player.IP]; ok {
 		return s.getGameState(), entities.ErrPlayerAlreadyInGame
 	}
 
-	s.Players[player.IP] = player
+	s.players[player.IP] = player
 
-	if len(s.Players) == s.MaxPlayers {
+	if len(s.players) == s.maxPlayers {
 		s.state = entities.WaitBetState
 	}
 

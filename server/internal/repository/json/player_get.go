@@ -1,4 +1,4 @@
-package sqlite
+package json
 
 func (r *Repo) GetPlayer(name string) int {
 	r.mu.Lock()

@@ -8,29 +8,30 @@ import (
 
 type PlayerRepo interface {
 	GetPlayer(name string) int
+	SavePlayers(players []*entities.Player) error
 }
 
 type Service struct {
-	Players      map[string]*entities.Player
-	Deck         *entities.Deck
-	ActivePlayerIP string
-	DillerHand   *entities.Hand
-	MaxPlayers   int
-	mu           *sync.RWMutex
-	state        entities.State
+	players        map[string]*entities.Player
+	deck           *entities.Deck
+	activePlayerIP string
+	dealer         *entities.Hand
+	maxPlayers     int
+	mu             *sync.RWMutex
+	state          entities.State
 
 	playerRepo PlayerRepo
 }
 
 func New(maxPlayers int, playerRepo PlayerRepo) *Service {
 	return &Service{
-		Players:      make(map[string]*entities.Player),
-		Deck:         entities.NewDeck(),
-		ActivePlayerIP: "",
-		DillerHand:   &entities.Hand{},
-		MaxPlayers:   maxPlayers,
-		mu:           &sync.RWMutex{},
-		playerRepo:   playerRepo,
-		state:        entities.JoinState,
+		players:        make(map[string]*entities.Player),
+		deck:           entities.NewDeck(),
+		activePlayerIP: "",
+		dealer:         &entities.Hand{},
+		maxPlayers:     maxPlayers,
+		mu:             &sync.RWMutex{},
+		playerRepo:     playerRepo,
+		state:          entities.JoinState,
 	}
 }

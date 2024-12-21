@@ -18,7 +18,7 @@ func (s *Service) Hit(ctx context.Context, playerIP string) (*entities.GameState
 	}
 
 	// Взятие карты
-	card := s.Deck.DrawTopCard()
+	card := s.deck.DrawTopCard()
 	if card == nil {
 		return s.getGameState(), entities.ErrDeckEmpty
 	}
@@ -31,7 +31,7 @@ func (s *Service) Hit(ctx context.Context, playerIP string) (*entities.GameState
 		player.Hand.Done = true
 		switched := s.switchToNextPlayer(playerIP)
 		if !switched {
-			s.state = entities.ResultState
+			s.handleEndGame(ctx)
 			return s.getGameState(), nil
 		}
 	}

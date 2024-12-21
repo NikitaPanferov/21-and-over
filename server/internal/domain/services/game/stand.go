@@ -21,7 +21,7 @@ func (s *Service) Stand(ctx context.Context, playerIP string) (*entities.GameSta
 	player.Hand.Done = true
 	switched := s.switchToNextPlayer(playerIP)
 	if !switched {
-		s.state = entities.ResultState
+		s.handleEndGame(ctx)
 		return s.getGameState(), nil
 	}
 
