@@ -10,10 +10,12 @@ import (
 type (
 	GameService interface {
 		Join(ctx context.Context, player *entities.Player) (*entities.GameState, error)
-		GetState() entities.State
-		GetPlayer(
-			name, ip string,
-		) *entities.Player
+		GetState(ctx context.Context) entities.State
+		GetPlayer(ctx context.Context, name, ip string) *entities.Player
+		GetActivePlayerIP(ctx context.Context) string
+		Bet(ctx context.Context, playerIP string, bet int) (*entities.GameState, error)
+		Hit(ctx context.Context, playerIP string) (*entities.GameState, error)
+		Stand(ctx context.Context, playerIP string) (*entities.GameState, error)
 	}
 
 	Controller struct {

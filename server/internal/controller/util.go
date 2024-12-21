@@ -17,7 +17,7 @@ var (
 )
 
 func (c *Controller) ValidateState(ctx *tcpserver.Context) bool {
-	stateActions, ok := stateActionsMapping[c.gameService.GetState()]
+	stateActions, ok := stateActionsMapping[c.gameService.GetState(ctx.GetContext())]
 	if !ok || !slices.Contains(stateActions, ctx.GetMessage().Action) {
 		return false
 	}

@@ -13,7 +13,7 @@ type PlayerRepo interface {
 type Service struct {
 	Players      map[string]*entities.Player
 	Deck         *entities.Deck
-	ActivePlayer string
+	ActivePlayerIP string
 	DillerHand   *entities.Hand
 	MaxPlayers   int
 	mu           *sync.RWMutex
@@ -26,7 +26,7 @@ func New(maxPlayers int, playerRepo PlayerRepo) *Service {
 	return &Service{
 		Players:      make(map[string]*entities.Player),
 		Deck:         entities.NewDeck(),
-		ActivePlayer: "",
+		ActivePlayerIP: "",
 		DillerHand:   &entities.Hand{},
 		MaxPlayers:   maxPlayers,
 		mu:           &sync.RWMutex{},

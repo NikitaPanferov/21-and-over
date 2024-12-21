@@ -11,11 +11,11 @@ func (s *Service) Join(ctx context.Context, player *entities.Player) (*entities.
 	defer s.mu.Unlock()
 
 	if len(s.Players) >= s.MaxPlayers {
-		return nil, entities.ErrJoinGameIsFull
+		return s.getGameState(), entities.ErrGameIsFull
 	}
 
 	if _, ok := s.Players[player.IP]; ok {
-		return nil, entities.ErrJoinPlayerAlreadyInGame
+		return s.getGameState(), entities.ErrPlayerAlreadyInGame
 	}
 
 	s.Players[player.IP] = player

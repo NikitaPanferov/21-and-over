@@ -23,10 +23,14 @@ const (
 type EventType string
 
 const (
-	EventTypePlayerJoined EventType = "PLAYER_JOINED"
-	EventTypeWaitingBet   EventType = "WAITING_BET"
-	EventTypeGameStarted  EventType = "GAME_STARTED"
-	EventTypeGameEnded    EventType = "GAME_ENDED"
+	EventTypePlayerJoined         EventType = "PLAYER_JOINED"
+	EventTypeWaitingBet           EventType = "WAITING_BET"
+	EventTypePlayerDidBet         EventType = "PLAYER_DID_BET"
+	EventTypePlayerDidHit         EventType = "PLAYER_DID_HIT"
+	EventTypePlayerDidStand       EventType = "PLAYER_DID_STAND"
+	EventTypeGameStarted          EventType = "GAME_STARTED"
+	EventTypeActivePlayerSwitched EventType = "ACTIVE_PLAYER_SWITCHED"
+	EventTypeGameEnded            EventType = "GAME_ENDED"
 )
 
 type Message struct {
