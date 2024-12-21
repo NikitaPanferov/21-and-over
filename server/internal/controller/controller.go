@@ -32,6 +32,9 @@ func New(gameService GameService) *Controller {
 func RegisterHandlers(server *tcpserver.Server, controller *Controller) {
 	server.RegisterHandler("ECHO", controller.echoHandler)
 	server.RegisterHandler("JOIN", controller.joinHandler)
+	server.RegisterHandler("BET", controller.betHandler)
+	server.RegisterHandler("HIT", controller.hitHandler)
+	server.RegisterHandler("STAND", controller.standHandler)
 }
 
 func (c *Controller) echoHandler(ctx *tcpserver.Context) error {
