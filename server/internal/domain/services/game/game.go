@@ -1,15 +1,37 @@
 package game
 
-import "github.com/NikitaPanferov/21-and-over/server/internal/domain/entities"
+import (
+	"sync"
 
-type Service struct {
-	Players map[string]*entities.Player
-	Deck    *entities.Deck
+	"github.com/NikitaPanferov/21-and-over/server/internal/domain/entities"
+)
+
+type PlayerRepo interface {
+	GetPlayer(name string) int
+	SavePlayers(players []*entities.Player) error
 }
 
-func New() *Service {
+type Service struct {
+	players        map[string]*entities.Player
+	deck           *entities.Deck
+	activePlayerIP string
+	dealer         *entities.Hand
+	maxPlayers     int
+	mu             *sync.RWMutex
+	state          entities.State
+
+	playerRepo PlayerRepo
+}
+
+func New(maxPlayers int, playerRepo PlayerRepo) *Service {
 	return &Service{
-		Players: make(map[string]*entities.Player),
-		Deck:    entities.NewDeck(),
+		players:        make(map[string]*entities.Player),
+		deck:           entities.NewDeck(),
+		activePlayerIP: "",
+		dealer:         &entities.Hand{},
+		maxPlayers:     maxPlayers,
+		mu:             &sync.RWMutex{},
+		playerRepo:     playerRepo,
+		state:          entities.JoinState,
 	}
 }

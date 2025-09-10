@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/NikitaPanferov/21-and-over/server/pkg/logger"
 )
 
 // Context представляет пользовательский контекст, совместимый с context.Context.
@@ -103,20 +105,18 @@ func (c *Context) SendToIP(ip string, data []byte) error {
 	return nil
 }
 
-func (c *Context) SendToAll(code Code, data any) error {
-	dataToSend, err := json.Marshal(Message{
-		ID:     c.message.ID,
-		Action: c.message.Action,
-		Code:   code,
-		Data:   data,
-	})
+func (c *Context) SendToAll(code Code, message *Message) {
+	dataToSend, err := json.Marshal(message)
 	if err != nil {
-		return fmt.Errorf("json.Marshal: %w", err)
+		logger.ErrorContext(
+			c.ctx,
+			"failed to marshall message",
+			"error", err,
+		)
+		return
 	}
 
 	c.server.broadcastCh <- dataToSend
-
-	return nil
 }
 
 func (c *Context) GetRawData() []byte {
@@ -132,4 +132,12 @@ func (c *Context) SetRawData(data any) error {
 	c.data = rawData
 
 	return nil
+}
+
+func (c *Context) GetContext() context.Context {
+	return c.ctx
+}
+
+func (c *Context) ClearConnections() {
+	c.server.ClearConnections()
 }

@@ -6,28 +6,38 @@ import (
 )
 
 type Deck struct {
-	Cards []*Card
+	Cards []*Card `json:"cards"`
 }
 
 func NewDeck() *Deck {
 	suits := []Suit{Spades, Hearts, Diamonds, Clubs}
 	ranks := []Rank{Ace, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King}
 
-	// Create a deck with two standard decks combined
-	cards := make([]*Card, 0, 104) // 52 cards per deck * 2 decks
-	for i := 0; i < 2; i++ {       // Add two decks
+	cards := make([]*Card, 0, 104)
+	for i := 0; i < 2; i++ {
 		for _, suit := range suits {
 			for _, rank := range ranks {
-				cards = append(cards, &Card{Suit: suit, Rank: rank, IsHidden: false})
+				cards = append(cards, &Card{Suit: suit, Rank: rank, IsHidden: true})
 			}
 		}
 	}
 
-	// Shuffle the deck
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(cards), func(i, j int) {
 		cards[i], cards[j] = cards[j], cards[i]
 	})
 
 	return &Deck{Cards: cards}
+}
+
+func (d *Deck) DrawTopCard() *Card {
+	if len(d.Cards) == 0 {
+		return nil
+	}
+
+	topCard := d.Cards[0]
+
+	d.Cards = d.Cards[1:]
+
+	return topCard
 }
